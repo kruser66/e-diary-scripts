@@ -1,6 +1,6 @@
 from random import choice
 from datacenter.models import Schoolkid, Mark, Chastisement
-from datacenter.models import Lesson, Commendation
+from datacenter.models import Lesson, Commendation, Subject
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 
 
@@ -33,6 +33,14 @@ def select_entered_name(name):
         return child
 
 
+def check_subject(subject):
+    try:
+        Subject.objects.get(title=subject)
+    except (MultipleObjectsReturned, ObjectDoesNotExist):
+        print(f'Урок {subject} не найден. Уточните название предмета!')
+        return None
+
+
 def fix_marks(name):
     child = select_entered_name(name)
     if child:
@@ -53,31 +61,24 @@ def remove_chastisements(name):
             chastiment.delete()
 
 
-def remove_commendation(name):
+def create_commendation(subject, name):
     child = select_entered_name(name)
     if child:
-        child_commedation = Commendation.objects.filter(schoolkid=child)
-        for chastiment in child_commedation:
-            chastiment.delete()
-
-
-def create_commendation(subj, name):
-    child = select_entered_name(name)
-    if child:
-        lesson = Lesson.objects.filter(
-            year_of_study=child.year_of_study,
-            group_letter=child.group_letter,
-            subject__title=subj
-        ).order_by('-date')[0]
-        commendation, created = Commendation.objects.update_or_create(
-            created=lesson.date,
-            schoolkid=child,
-            subject=lesson.subject,
-            teacher=lesson.teacher
-        )
-        if created:
-            commendation.text = choice(text_commendations)
-            commendation.save()
+        if check_subject(subject):
+            lesson = Lesson.objects.filter(
+                year_of_study=child.year_of_study,
+                group_letter=child.group_letter,
+                subject__title=subject
+            ).order_by('-date')[0]
+            commendation, created = Commendation.objects.update_or_create(
+                created=lesson.date,
+                schoolkid=child,
+                subject=lesson.subject,
+                teacher=lesson.teacher
+            )
+            if created:
+                commendation.text = choice(text_commendations)
+                commendation.save()
 
 
 if __name__ == '__main__':
