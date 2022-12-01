@@ -4,7 +4,7 @@ from datacenter.models import Lesson, Commendation, Subject
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 
 
-text_commendations = [
+TEXT_COMMENDATIONS = [
     'Молодец!', 'Отлично!', 'Хорошо!', 'Гораздо лучше, чем я ожидал!'
     'Ты меня приятно удивил!', 'Великолепно!', 'Прекрасно!',
     'Ты меня очень обрадовал!', 'Именно этого я давно ждал от тебя!',
@@ -20,56 +20,46 @@ text_commendations = [
 ]
 
 
-def select_entered_name(name):
+def fetch_entered_name(name):
     try:
         child = Schoolkid.objects.get(full_name__contains=name)
-    except MultipleObjectsReturned:
+    except Schoolkid.MultipleObjectsReturned:
         print(f'"{name}": Совпадение имен, уточните ученика!')
         return None
-    except ObjectDoesNotExist:
+    except Schoolkid.ObjectDoesNotExist:
         print(f'"{name}": Такого ученика нет в базе!')
         return None
     else:
         return child
 
 
-def check_subject(subject):
-    try:
-        Subject.objects.get(title=subject)
-    except (MultipleObjectsReturned, ObjectDoesNotExist):
-        print(f'Урок {subject} не найден. Уточните название предмета!')
-        return None
-
-
 def fix_marks(name):
-    child = select_entered_name(name)
+    child = fetch_entered_name(name)
     if child:
-        child_marks = Mark.objects.filter(schoolkid=child, points__in=[2, 3])
-        print(f'Плохих оценок: {child_marks.count()}')
-        for mark in child_marks:
-            mark.points = 5
-            mark.save()
-        child_marks = Mark.objects.filter(schoolkid=child, points__in=[2, 3])
-        print(f'Плохих оценок: {child_marks.count()}')
+        fixed_marks = Mark.objects.filter(
+            schoolkid=child, points__in=[2, 3]
+        ).update(points = 5)
+        print(f'Исправлено плохих оценок: {fixed_marks}')
 
 
 def remove_chastisements(name):
-    child = select_entered_name(name)
+    child = fetch_entered_name(name)
     if child:
-        child_chastisements = Chastisement.objects.filter(schoolkid=child)
-        for chastiment in child_chastisements:
-            chastiment.delete()
+        deleted_objs,_ = Chastisement.objects.filter(
+            schoolkid=child
+        ).delete()
+        print(f'Удалено {deleted_objs} замечаний.')
 
 
 def create_commendation(subject, name):
-    child = select_entered_name(name)
+    child = fetch_entered_name(name)
     if child:
-        if check_subject(subject):
-            lesson = Lesson.objects.filter(
-                year_of_study=child.year_of_study,
-                group_letter=child.group_letter,
-                subject__title=subject
-            ).order_by('-date')[0]
+        lesson = Lesson.objects.filter(
+            year_of_study=child.year_of_study,
+            group_letter=child.group_letter,
+            subject__title=subject
+        ).order_by('-date').first()
+        if lesson:
             commendation, created = Commendation.objects.update_or_create(
                 created=lesson.date,
                 schoolkid=child,
@@ -77,9 +67,8 @@ def create_commendation(subject, name):
                 teacher=lesson.teacher
             )
             if created:
-                commendation.text = choice(text_commendations)
+                commendation.text = choice(TEXT_COMMENDATIONS)
                 commendation.save()
+        else:
+            print(f'Урок {subject} не найден. Уточните название предмета!')
 
-
-if __name__ == '__main__':
-    pass
