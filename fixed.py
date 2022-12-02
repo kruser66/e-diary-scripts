@@ -1,7 +1,6 @@
 from random import choice
 from datacenter.models import Schoolkid, Mark, Chastisement
-from datacenter.models import Lesson, Commendation, Subject
-from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
+from datacenter.models import Lesson, Commendation
 
 
 TEXT_COMMENDATIONS = [
@@ -38,17 +37,17 @@ def fix_marks(name):
     if child:
         fixed_marks = Mark.objects.filter(
             schoolkid=child, points__in=[2, 3]
-        ).update(points = 5)
+        ).update(points=5)
         print(f'Исправлено плохих оценок: {fixed_marks}')
 
 
 def remove_chastisements(name):
     child = fetch_entered_name(name)
     if child:
-        deleted_objs,_ = Chastisement.objects.filter(
+        deleted_chastisements, _ = Chastisement.objects.filter(
             schoolkid=child
         ).delete()
-        print(f'Удалено {deleted_objs} замечаний.')
+        print(f'Удалено {deleted_chastisements} замечаний.')
 
 
 def create_commendation(subject, name):
@@ -68,7 +67,6 @@ def create_commendation(subject, name):
             )
             if created:
                 commendation.text = choice(TEXT_COMMENDATIONS)
-                commendation.save()
+                commendation.save(update_fields=['text'])
         else:
             print(f'Урок {subject} не найден. Уточните название предмета!')
-
